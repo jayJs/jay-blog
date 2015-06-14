@@ -17,12 +17,13 @@ or download [jQuery](http://jquery.com/download/), [Bootstrap](http://getbootstr
 <link rel="stylesheet" href="/bower_components/bootstrap/dist/css/bootstrap.min.css">
 <link rel="stylesheet" href="/bower_components/bootstrap/dist/css/bootstrap-theme.min.css">
 <link rel="stylesheet" href="/bower_components/animate.css/animate.min.css">
+<link rel="stylesheet" href="/bower_components/trumbowyg/dist/ui/trumbowyg.min.css">
 
 // Add javascript right to the end of file before the closing </body> tag
 
 // Easy way:  (all of the same files as debuggers way, but minified and uglified)
 <script src="/bower_components/jquery/dist/jquery.min.js"></script>  
-<script src="/bower_components/jay/dist/all.min.js"></script>  
+<script src="/bower_components/jay/dist/jay_and_all_dependencies.min.js"></script>  
 
 // or the debuggers way:  
 <script src="/bower_components/jquery/dist/jquery.min.js"></script>
@@ -30,54 +31,35 @@ or download [jQuery](http://jquery.com/download/), [Bootstrap](http://getbootstr
 <script src="/bower_components/js-signals/dist/signals.min.js"></script>
 <script src="/bower_components/hasher/dist/js/hasher.min.js"></script>
 <script src="/bower_components/crossroads/dist/crossroads.min.js"></script>
+<script src="/bower_components/trumbowyg/dist/trumbowyg.min.js"></script>
 <script src="/bower_components/jay/dist/jay.js"></script>
 ```
-Put your fbAppId into html head like this
+If you plan to use Facebook SDK, put this into html head like this
 ```
 <script>
   var fbAppId = "756437764450452"
-
-  // use J.host, if your database is served from somewhere else then the index.html file itself
-  // var J = {}
-  // J.host = "http://localhost:5000"
 </script>
 ```
 
 ##jQuery  
 Jay is a shorthand for jQuery. You can safely use all of jQuery in Jay.  
 
-##Templating  
-Put all design templates into one index.html file and make them invisible.  
-Jay relies on Bootstrap class "hidden".
-```
-<div id="frontPageView" class="hidden"></div>
-<div id="otherPageView" class="hidden"></div>
-```
-
 ##Selectors  
-Jay takes every class and id on your index.html and creates a variable with their name.  
-```
-// Remember when you did:
-$("#hello").show();
+Jay encourages you to use $(foo) instead of $("#foo").  
+It's 3 letters less and jQuery supports this out of the box.  
 
-// how about
-hello.show();
+##show() & hide()  
+Overwrites jQuery show() and hide() with a little bit less jumpy solution for this.  
+Now they also take an optional argument for a [animate.css](http://daneden.github.io/animate.css/) animation.  
 ```
-
-##in() & out()  
-For showing and hiding elements, we have in() & out().
-They also take an optional argument for a [animate.css](http://daneden.github.io/animate.css/) animation.
-```
-$("#hello").in();   // this is exactly the same
-hello.in();         // as this
-
-hello.in("bounce")   // comes in with animate.css animation called "bounce"
+$(hello).show();
+$(hello).show("bounce")   // comes in with animate.css animation called "bounce"
 ```
 It's basically just a shorthand for adding / removing class "hidden" and optionally adding an animation.  
 ```
 // both do the same thing:
 $("#loading").addClass("animated fadeOut").addClass("hidden");
-loading.out('fadeOut');
+$(loading).out('fadeOut');
 ```
 
 ##Model: Routing  
@@ -97,9 +79,9 @@ The View includes information about what to turn on or off on the page and calls
 Views have to be declared before Models.  
 ```
 var frontPageView = function () {
-  otherPageView.out();
-  adminPageView.out();
-  frontPage.in();
+  $(otherPageView).hide();
+  $(adminPageView).hide();
+  $(frontPage).show();
   frontPageFunction();
 }
 ```
@@ -150,14 +132,14 @@ A user is logged in if its logged in to Facebook and a user of a Facebook app.
 (Keep in mind that Facebook apps only work if the Settings -> Site URL matches your URL).  
 ```
 function isLoggedIn() {
-  $("#logInBox").hide();
-  $("#logOutBox").show();  
-  $("#content").append("Your user id is: " + J.userId);
+  $(logInBox).hide();
+  $(logOutBox).show();  
+  $(content).append("Your user id is: " + J.userId);
 }
 
 function isNotLoggedIn() {
-  $("#logOutBox").hide();  
-  $("#logInBox").show();
+  $(logOutBox).hide();  
+  $(logInBox).show();
 }
 
 isUser(isLoggedIn, isNotLoggedIn);  
@@ -167,12 +149,12 @@ OR
 ```
 
 isUser(function() { // logged in users
-  $("#logInBox").hide();
-  $("#logOutBox").show();  
-  $("#content").append("Your user id is: " + J.userId);
+  $(logInBox).hide();
+  $(logOutBox).show();  
+  $(content).append("Your user id is: " + J.userId);
   }, function (){ // not logged in users
-    $("#logOutBox").hide();  
-    $("#logInBox").show();
+    $(logOutBox).hide();  
+    $(logInBox).show();
   }
 );  
 ```
@@ -187,8 +169,82 @@ https://developers.facebook.com/apps/1652366571652103/settings/
 and turn the switch here:  
 https://developers.facebook.com/apps/1652366571652103/review-status/  
 
-Sometimes it's not FB, it's Parse.com, cl() / console.log() ought to print you it's errors.  
+Sometimes it's not FB, it's Parse.com.
 
+##Little helpers  
+
+##.wysiwg  
+If you add class .wysiwg to a textarea, then it will automatically turned into a WYSIWG editor.  
+Such editor is aknologed by prepareForm() and rebuildForm().  
+
+##cl(message)  
+A shortcut for console.log(message);  
+```
+console.log(message); // this logs the message to the console
+cl(message); // this does exactly the same thing
+```
+
+##a(message)  
+Display an alert to the users.
+```
+a("Log in failed");
+```  
+
+##getBlobURL(elementId)  
+In case the browser supports it, gets the URL of the blob of the image attached to the element.  
+Otherwise returns false.  
+Can be useful for creating previews of images the user has submitted.  
+```  
+$('#image').change(function(){  
+  var blob = getBlobURL($(this));
+  if(blob != false) {
+    $(imagePreview).css("background-image", "url("+blob+")")
+  }
+})
+```  
+
+##detectFileUpload()  
+Does the browser supports file uploading at all?  
+Returns true or false.  
+Since the early smartphones did not support file uploading via browsers, it might make debugging your webapp painfull (example - the user reports, that he just clicks on the button and nothing happends).  
+detectFileUpload() can help you detect the problem and alert the user.
+Update: Added detection for iOs 8.0.0 & 8.1.1 which under favorable terms might support file uploads but usually not.  
+```  
+var canUploadFiles = detectFileUpload();
+if(canUploadFiles === false) {
+  alert("This browser does not support file uploads");
+}
+```  
+
+##canCache()  
+Detect if the client can handle cache.  
+Returns true or false.
+The reason for this is, that some browsers (looking at you, winphone) just can't handle their cache.
+Currently it's used internally inside the get() function.  
+
+
+##resetForm('formId')  
+Resets elements in the form in a way a reset form button would.  
+Currently handles input type text, checkbox, radio, file and textareas.  
+Useful since Single Page Apps itself don't refresh the form after submitting.  
+```  
+resetForm("addPostForm");
+$(imagePreview).css("background-image", "")
+```  
+
+##Use without /#/ in URL  
+**beta**  
+Since v0.7 Jay supports URL-s without /#/.
+In order to use it set J.html5 to true in the beginning of your HTML.  
+```
+//HTML:
+var J = {}
+J.html5 = true;
+```
+This makes it basically work.  
+Other things to keep in mind.
+1. Hasher might not always read URL-s without hashtags present. For that please find Shredder in the extra folder of Jay. It's basically Hasher but with a little hack to also support URL-s without hashtags.  
+2. Make sure your server is not just serving the html to ("/"), but rather to ("*").  
 
 ##CRUD  
 requires [Jay-npm](https://github.com/jayJs/jay-npm)  
@@ -199,13 +255,17 @@ Calls ($.ajax JSONP) are made to address "/api/j".
 **post(table, data)** -  add a row to database.  
 **get(table, limit, objectId)** - get a row from database. If limit is 1, add objectId, else <limit> last posts are queried.  
 **put(table, objectId, data)** - update a row in database. **NB** currently (0.5.0x) not supported.
+**query(table, limit, key, value, order)** - Query for data.  
+
 **save(table, formId)** - Save data data from form to database.  
-
+**update(table, formId, objectId)** - Update data from formId to table in objectId via a $.ajax JSONP call.  
 The calls are asynchronous and can be chained with .then().  
+With saveForm() and updateForm() callback approach can be used.  
 
-**Warning**  
-Without data modeling you can't guarantee data consistency and you will limit your test coverage.  
-Nevertheless you will prototype much quicker.  
+**saveForm(Table, formId, callback)** - save() + some clever things Single Page Apps require you to do.
+
+**updateForm(Table, formId, objectId, callback)** - Same as saveForm(), but for updating data.  
+
 
 ##post(table, data)  
 **Add a row to database via a $.ajax JSONP call.**  
@@ -347,55 +407,37 @@ objectId - object to be updated (*string*).
 
 update() acts the same as save() the only difference being, it updates instead of creates a new post.  
 
-##Little helpers  
+##query(table, limit, key, value, order)  
+**Query for data.**  
+table - name of the table to save this data (*string*).  
+limit - how many results shoult it return (*number*).  
+key - What key to search for (*key*).  
+value - What value to search for (*string*).  
+order - what's the order (*string*).  
 
-##cl(message)  
-A shortcut for console.log(message);  
+Search from table Posts, where "features" is true, get 2 results in the order hoe they were created:
 ```
-console.log(message); // this logs the message to the console
-cl(message); // this does exactly the same thing
+query("Posts", 2, "featured", "true", 'createdAt').then(function(d){
+  cl(d);
+});
 ```
 
-##a(message)  
-Display an alert to the users.
+##saveForm(Table, formId, callback)
+saveForm performs the same things as save() combined with handling all the stupid things you need to know with Single Page Apps forms, most notably preventing same click from triggering multiple events.  
+Returns response from save() - if post was successful, this contains an objectId.
 ```
-a("Log in failed");
-```  
+saveForm("Posts", 'addPostForm', function(data){
+  window.location = "#/p/" + data.objectId;
+});
+```
 
-##getBlobURL(elementId)  
-In case the browser supports it, gets the URL of the blob of the image attached to the element.  
-Otherwise returns false.  
-Can be useful for creating previews of images the user has submitted.  
-```  
-$('#image').change(function(){  
-  var blob = getBlobURL($(this));
-  if(blob != false) {
-    imagePreview.css("background-image", "url("+blob+")")
-  }
-})
-```  
-
-##detectFileUpload()  
-Does the browser supports file uploading at all?  
-Returns true or false.  
-Since the early smartphones did not support file uploading via browsers, it might make debugging your webapp painfull (example - the user reports, that he just clicks on the button and nothing happends).  
-detectFileUpload() can help you detect the problem and alert the user.
-Update: Added detection for iOs 8.0.0 & 8.1.1 which under favorable terms might support file uploads but usually not.  
-```  
-var canUploadFiles = detectFileUpload();
-if(canUploadFiles === false) {
-  alert("This browser does not support file uploads");
-}
-```  
-
-##resetForm('formId')  
-Resets elements in the form in a way a reset form button would.  
-Currently handles input type text, checkbox, radio, file and textareas.  
-Useful since Single Page Apps itself don't refresh the form after submitting.  
-```  
-resetForm("addPostForm");
-imagePreview.css("background-image", "")
-```  
+##updateForm(Table, formId, objectId, callback)
+updateForm performs the same things as update() combined with handling all the stupid things you need to know with Single Page Apps forms, most notably preventing same click from triggering multiple events. Returns response from update() - if update was successful, this contains the new updatedAt value.
+```
+updateForm("Posts", 'addPostForm', id, function(data){
+  window.location = "#/p/" + id;
+});
+```
 
 ##rebuildForm('formId', data)  
 If in from there exists an input with the same name as a key in data, the value from the data will be appended to the input.  
@@ -406,14 +448,11 @@ function editPostFunction(id){
     var d = data[0];
     rebuildForm("addPostForm", d);
     // rebuildForm() does not take input="file" yet, so:
-    if(d.image && d.image.url) { imagePreview.css("background-image", "url("+d.image.url+")"); }
+    if(d.image && d.image.url) { $(imagePreview).css("background-image", "url("+d.image.url+")"); }
   })
   saveForm("Posts", 'addPostForm', id); // search saveForm() from this Readme.  
 }
-```  
-##saveForm(Table, formId, objectId)
-saveForm performs the same things as save() & update() combined with handling all the stupid things you need to know with Single Page Apps forms, most notably preventing same click from triggering multiple events.  
-
+```
 ##prepareForm('formName')  
 Turns from contents into FormData. Used internally by save() and update():
 ```  
@@ -424,18 +463,6 @@ function save(table, formName) {
   });
 }
 ```  
-
-##canCache()  
-Detect if the client can handle cache.  
-Returns true or false.
-The reason for this is, that some browsers (looking at you, winphone) just can't handle their cache.
-Currently it's used internally inside the get() function.  
-
-## Currently undocumented  
-saveForm(Table, formId, objectId)
-prepareForm  
-rebuildForm  
-update()  
 
 ##Compability  
 Visit the site - compatible until IE 6. We use [latest jQuery version 1.x](http://jquery.com/browser-support/).  
@@ -450,6 +477,18 @@ A Single Page App (SPA) architecture relying on a REST API has become my weapon 
 
 The name J or Jay is a wordplay with the name jQuery. The idea of Jay is to be a shorthand for most common things that people might use jQuery for Single Page Applications.  
 I also like Jay-Z.  
+
+##Deprecated  
+**foo === $("#foo").**  
+Since v0.7 we dropped support for this and encourage you to use $(foo).  
+This works by default with jQuery and is more compatible towards old browsers.  
+
+**in() & out().**  
+Not in use since v0.7.  
+The reason for this is that in is an ECMAscript reserved keyword.  
+We just did not notice it before, but IE8 started to cry over this.  
+So we decided to go for overwriting jQueries show() and hide().  
+
 
 ##Licence
 

@@ -1,3 +1,4 @@
+"use strict";
 
 // if J is not set in index.html, set it here.
 if(typeof J === "undefined") {
@@ -77,19 +78,33 @@ function checkIn() {
 
 // shortcut for console.log
 function cl(data) {
-  console.log(data);
+  // IE only allows console if developer window is open.
+  if (typeof console === "undefined") {
+    // I'm so failing sailently
+  } else {
+    console.log(data);
+  }
 }
 
 // shortcut for console.error
 function ce(data) {
-  console.error(data);
+  // IE only allows console if developer window is open.
+  if (typeof console === "undefined") {
+    // I'm so failing sailently
+  } else {
+    console.error(data);
+  }
 }
 
-function getBlobURL(input) {
-  var file = input[0].files[0];
-  var blob = URL.createObjectURL(file);
-  if(blob) {
-    return blob;
+function getBlobURL($input) {
+  var file = $input[0].files[0];
+  if(URL) { // this is for you, IE7, IE8
+    var blob = URL.createObjectURL(file);
+    if(blob) {
+      return blob;
+    } else {
+      return false;
+    }
   } else {
     return false;
   }
@@ -124,47 +139,87 @@ function canCache(){
 }
 
 function resetForm(formName) {
-  // set normal form members
-  $("#"+formName+" input").each(function( one ) {
-    var type = $(this).attr("type");
-    if(type === "text") {
-      $(this).val('');
+  $("#"+formName)[0].reset()
+  $(".trumbowyg-editor").html("")
+}
+
+function rebuildForm(formId, data) {
+  $("#"+formId + " :input:not(:submit)").each(function(){
+    var $field = $(this);
+    if($field.attr("id") in data) {
+      if($field.attr("type") === "text") {
+        if ($field.hasClass("wysiwg")) {
+          $field.parent().find(".trumbowyg-editor").html(data[$field.attr("id")])
+        } else {
+          $field.val(data[$field.attr("id")])
+        }
+      }
+      if($field.attr("type") === "file") {
+        // todo
+      }
     }
-    if(type === "checkbox") {
-      $(this).removeAttr('checked');
+    // if it uses name instead if ID, like checkbox
+    else if($field.attr("name") in data) {
+      if($field.attr("type") === "checkbox") {
+        // turn to array
+        var toArray = data[$field.attr("name")].split(",");
+        // find if current checkbox value is in array
+        var findFromArray = toArray.indexOf($field.attr("value"));
+        // if it is, then mark it as checked
+        if(findFromArray != -1) {
+          $field.prop('checked', true);
+        }
+      }
     }
-    if(type === "radio") {
-      $(this).removeAttr('checked');
+  })
+}
+
+function saveForm(Table, formId, callback) {
+
+  var clicked = false;
+  $("#"+formId).on("submit", function(event) {
+    event.preventDefault();
+    if(clicked === false) {
+      $("#pleaseWait").show()
+      $("#"+formId + " input:submit").attr('disabled','disabled');
+      save(Table, formId).then(function(resp){
+        $("#"+formId + " input:submit").removeAttr('disabled');
+        $("#pleaseWait").hide()
+        callback(resp);
+      })
+      clicked = true;
     }
-    if(type === "file") {
-      $(this).replaceWith($(this).clone(true));
+  })
+}
+
+
+function updateForm(Table, formId, objectId, callback) {
+
+  var clicked = false;
+  $("#"+formId).on("submit", function(event) {
+    event.preventDefault();
+    if(clicked === false) {
+      $("#pleaseWait").show()
+      $("#"+formId + " input:submit").attr('disabled','disabled');
+      update(Table, formId, objectId).then(function(resp){
+        $("#"+formId + " input:submit").removeAttr('disabled');
+        $("#pleaseWait").hide()
+        callback(resp);
+      })
+      clicked = true;
     }
-  });
-  // clear textareas
-  $("#"+formName+" textarea").each(function( one ) {
-    $(this).val('');
-  });
+  })
 }
 
 // write to alert
 function a(message) {
-  // find if alert exists and if it does, remove it.
-  var elem = document.getElementById("alert");
-  if(elem != null) {
-    var elemParent = elem.parentNode;
-    elemParent.removeChild("alert");
-  }
-  // create the alert HTML
-  var extra = '<div id="alert" style="z-index: 10;"><button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button><div id="alertMessage" class="alert alert-black alert-dismissible" role="alert">'+message+'</div></div>';
-  // add html to beginning of app
-  var app = document.getElementById('app');
-  app.innerHTML = extra + app.innerHTML;
+  $("#alert").remove();
+  $("body").append('<div id="alert" style="z-index: 10; margin-left: auto;  margin-right: auto; left: 0; right: 0;"><button type="button" class="close" style="opacity: 1;  z-index: 11;  position: relative; color: #fff;  margin-right: 15px; margin-top: 7px; font-size: 23pt; text-shadow: none;" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button><div id="alertMessage" class="alert alert-black alert-dismissible" role="alert">'+message+'</div></div>')
 }
 
 function isUser (isLoggedIn, notLoggedIn) {
   // if it's a user
   if(J.userId != undefined && J.userId != false) {
-    //isLoggedIn();
     isLoggedIn();
     // if it's not a user or we are not sure yet
   } else {
@@ -195,10 +250,56 @@ function isUser (isLoggedIn, notLoggedIn) {
   }
 }
 
+// rebuild links for HTML5 mode.
+if(J.html5 === true) {
+  $("body").on("click", "a", function (event) {
+    if($(this).attr("target") != "_blank") {
+      event.preventDefault()
+      //  get the original URL from link
+      var originalUrl = $(this).attr("href");
+      // get current URL
+      var host = window.location.protocol + "//" + window.location.host
+      var href = window.location.href
+      // Make sure it isn't already a correct url
+      if(href.charAt(host.length+1) === "#") {
+        // there already is a hash at the correct place, so don't to anything
+      } else  { //  if browser supports pushState, remove piece of old URL and put just what was after hashtag.
+        if (window.history && window.history.replaceState) {
+          var hashTagBack = host + "/#" + window.location.pathname;
+          history.replaceState("", document.title, hashTagBack);
+        } else {   // It's an old browser, so we downgrade to just normal links.
+          if(originalUrl === "#" || originalUrl === "#/") {
+            window.location = host;
+          } else {
+            window.location = href;
+          }
+        }
+      }
+      window.location = originalUrl;
+    }
+  })
+}
+
+function removeHash(){
+  var host = window.location.protocol + "//" + window.location.host
+  var _hashValRegexp = /#(.*)$/;
+  var result = _hashValRegexp.exec(hasher.getURL());
+  if(result) {
+    if (window.history && window.history.pushState) {     //
+      window.history.pushState("", document.title, host + result[1]);
+    } else {
+      window.location = result[1];
+    }
+  }
+}
+
 function route(crossroads) {
   //setup hasher
   // hasher let's you know when route is changed
   function parseHash(newHash, oldHash){
+    if(J.html5 === true) {
+      removeHash(); // if HTML5 mode is on, remove hash from URL
+    }
     crossroads.parse(newHash);
   }
   hasher.initialized.add(parseHash); //parse initial hash
@@ -206,43 +307,31 @@ function route(crossroads) {
   hasher.init(); //start listening for history change
 }
 
-function prepareForm(formName) {
+function prepareForm(formId) {
 
   var checkboxes = [];
-//cl("a")
-  // added progress bar
-  $("body").append('<div style="position: absolute; color: #fff; padding-top: 15px; bottom: 20px; height: 50px; background: #000; opacity: 0.3; width: 0%; text-align: center" id="progress">Upload in progress: <span id="processPercent">45%</span></div>');
-
 
   var fd = new FormData();
   var titles = {};
-  //$("#"+formName+":submit").attr("disabled", "disabled");
-  formName = $("#"+formName);
+  var $form = $("#"+formId);
   // go through form and get data
-  formName.find("input, textarea").each(function(){
+  $form.find("input, textarea").each(function(){
     var t = $(this);
 
     // handle input type text, file, submit differently;
     switch(t.attr("type")) {
     case "text":
-    fd.append(t.attr("id"), t.val()); // add the value of the input
-    titles[t.attr("id")] = $("label[for='"+this.id+"']").text(); // at the label to titles array
-    break;
-
     case "textarea":
     fd.append(t.attr("id"), t.val()); // add the value of the input
     titles[t.attr("id")] = $("label[for='"+this.id+"']").text(); // at the label to titles array
     break;
 
     case "hidden":
-      if (t.attr("name") === "userId") {
-        fd.append(t.attr("name"), t.attr("value")); // add the value of the input
-        titles[t.attr("name")] = t.attr("value"); // at the label to titles array
-      }
+    fd.append(t.attr("name"), t.attr("value"));
     break;
 
     case "file":
-    fd.append(t.attr("id"), $(this)[0].files[0]); // add the value of the input
+    fd.append(t.attr("id"), this.files[0]); // add the value of the input
     titles[t.attr("id")] = $("label[for='"+this.id+"']").text(); // at the label to titles array
     break;
 
@@ -294,50 +383,36 @@ function prepareForm(formName) {
 
   titles = JSON.stringify(titles);
   fd.append("titles", titles); // add titles to fd
-  //$("#"+formName+":submit").removeAttr('disabled');
+
   return fd;
 }
 
 // define save();
 function save(table, formName) {
 
-  fd = prepareForm(formName);
+  var fd = prepareForm(formName);
 
   return post(table, fd).then(function(data){
     return data;
   });
 }
 
-function update(table, id, formName) {
+function update(table, formName, id) {
 
-  fd = prepareForm(formName);
+  var fd = prepareForm(formName);
 
   return put(table, id, fd).then(function(data) {
     return data;
   });
 }
 
-
-// handle info coming from upload progress
-function progressHandlingFunction(e){
-  if(e.lengthComputable){
-    var percent= e.loaded/e.total*100;
-    $("#progress").css("width", percent+"%");
-    $("#processPercent").empty().append(percent+"%");
-    if(percent === 100) {
-      $("#progress").css("width", "0%");
-    }
-  }
-}
-
-// define post()
 function post(table, data) {
-  // perhaps we should wait here if access_token does not exist yet?
+  // TODO wait until access_token exists
+
+  var url = "/api/j/?table="+table+"&token="+J.token+"&user="+J.userId+"&type=short";
 
   if(J.host) {
-    var url = J.host + "/api/j/?table="+table+"&token="+J.token+"&user="+J.userId+"&type=short";
-  } else {
-    var url = "/api/j/?table="+table+"&token="+J.token+"&user="+J.userId+"&type=short";
+    url = J.host + url;
   }
 
   return $.ajax({
@@ -357,13 +432,6 @@ function post(table, data) {
       }
       return response;
     },
-    xhr: function() {  // Custom XMLHttpRequest
-      var myXhr = $.ajaxSettings.xhr();
-      if(myXhr.upload){ // Check if upload property exists
-        myXhr.upload.addEventListener('progress',progressHandlingFunction, false); // For handling the progress of the upload
-      }
-      return myXhr;
-    },
     error: function(error) {
       a(error.responseText);
       ce(error);
@@ -372,14 +440,12 @@ function post(table, data) {
   });
 }
 
-
-// define get()
 function get(table, limit, id) {
 
+  var url = "/api/j/?table="+table+'&id='+id+'&limit='+limit;
+
   if(J.host) {
-    var url = J.host + "/api/j/?table="+table+'&id='+id+'&limit='+limit;
-  } else {
-    var url = "/api/j/?table="+table+'&id='+id+'&limit='+limit;
+    url = J.host + url;
   }
 
   return $.ajax({
@@ -399,13 +465,12 @@ function get(table, limit, id) {
   });
 }
 
-// define put()
 function put(table, id, data) {
 
+  var url = "/api/j/?table="+table+'&id='+id+'&data='+data;
+
   if(J.host) {
-    var url = J.host + "/api/j/?table="+table+'&id='+id+'&data='+data;
-  } else {
-    var url = "/api/j/?table="+table+'&id='+id+'&data='+data;
+    url = J.host + url;
   }
 
   return $.ajax({
@@ -420,7 +485,6 @@ function put(table, id, data) {
       return data;
     },
     error: function(error) {
-      cl("siin")
       a(error.responseText);
       cl(error);
       return error;
@@ -428,9 +492,34 @@ function put(table, id, data) {
   });
 }
 
+function query(table, limit, key, value, order) {
+
+  var url = "/api/j/query/?table="+table+'&key='+key+'&value='+value+'&limit='+limit+'&order='+order;
+
+  if(J.host) {
+    url = J.host + url;
+  }
+
+  return $.ajax({
+    url: url,
+    cache: canCache(),
+    dataType: 'jsonp',
+    jsonp: "callback",
+    type: 'GET',
+    success: function(data){
+      return data;
+    },
+    error: function(error) {
+      a(error.responseText);
+      ce(error);
+      return error;
+    }
+  });
+}
+
 (function ( $ ) {
 
-  $.fn.out = function(transition) {
+  $.fn.hide = function(transition) {
     return this.each(function() {
       var elem = $( this );
       if (transition === undefined) {
@@ -446,7 +535,7 @@ function put(table, id, data) {
     });
   }
 
-  $.fn.in = function(transition) {
+  $.fn.show = function(transition) {
     return this.each(function() {
       var elem = $( this );
       if (transition === undefined) {
@@ -462,13 +551,11 @@ function put(table, id, data) {
     });
   }
 
-  // get all tags from HTML and assign foo = $("#foo") & bar = $(".bar")
-  var allTags = document.body.getElementsByTagName('*');
-  for (var tg = 0; tg< allTags.length; tg++) {
-    var tag = allTags[tg];
-    if (tag.id && tag.id != "fb-root" && tag.id != "fb_xdm_frame_http" && tag.id != "fb_xdm_frame_http" && tag.id != "facebook-jssdk") {
-      window[tag.id] = $("#"+tag.id);
-    }
-  }
+  $(".wysiwg").trumbowyg({
+    autogrow: true,
+    btns: ['bold', 'italic', 'link', 'unorderedList'],
+    fullscreenable: false,
+    removeformatPasted: true,
+  })
 
 }( jQuery ));
