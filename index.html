@@ -11,11 +11,12 @@
       <meta name="apple-mobile-web-app-capable" content="yes">
       <meta name="apple-mobile-web-app-status-bar-style" content="black">
       <script>
-        // test account for jay, works on localhost:5000
-        var fbAppId = "756437764450452" // if fbAppId is undefined, FB SDK is not added
-
-        var J = {}
-        J.host = "http://jay1.eu"
+        // Facebook SDK with authentication does not yet work, if J.host is declared.
+        //var fbAppId = "756437764450452"
+        var J = {
+          host: "http://jay1.eu",
+          appId: "e01"
+        }
       </script>
   </head>
   <body>

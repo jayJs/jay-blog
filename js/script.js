@@ -3,7 +3,7 @@
 $(document).ready(function() {
 
   // connect-livereload via Gulp autorefreshes the site.
-  $("body").append('<script src="http://localhost:35729/livereload.js?snipver=1"></script>');
+  //$("body").append('<script src="http://localhost:35729/livereload.js?snipver=1"></script>');
 
   // hide loadin + show app
   $("#loading").out()
@@ -132,7 +132,7 @@ $(document).ready(function() {
       // rebuildForm() does not take input file yet, so:
       if(d.image && d.image.url) { imagePreview.css("background-image", "url("+d.image.url+")"); }
     })
-    saveForm("Posts", 'addPostForm', id);
+    updateForm("Posts", 'addPostForm', id);
   }
 
   function logInFunction(){
@@ -177,7 +177,6 @@ $(document).ready(function() {
           }
         })
         onePost.append("<br /><br /><br /><a href='#/e/"+id+"'>Edit this post</a>")
-
       }
     });
   }
