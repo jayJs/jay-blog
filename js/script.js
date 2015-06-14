@@ -29,10 +29,14 @@ $(document).ready(function() {
   }
 
   var addPostView = function () {
-    clearApp()
-    resetForm("addPostForm")
-    $(addPost).show('fadeIn');
-    addPostFunction();
+    isUser(function(){ // is a user
+      clearApp()
+      resetForm("addPostForm")
+      $(addPost).show('fadeIn');
+      addPostFunction();
+    }, function() { // is not a user
+      window.location = "#/login";
+    });
   }
 
   var onePostView = function (id) {
@@ -42,9 +46,13 @@ $(document).ready(function() {
   }
 
   var editPostView = function (id) {
-    clearApp()
-    $(addPost).show('fadeIn');
-    editPostFunction(id);
+    isUser(function(){ // is a user
+      clearApp()
+      $(addPost).show('fadeIn');
+      editPostFunction(id);
+    }, function() { // is not a user
+      window.location = "#/login";
+    });
   }
 
   var logInView = function() {
@@ -127,8 +135,8 @@ $(document).ready(function() {
   }
 
   function logInFunction(){
-    fbLogin.on('click', function(){
-      FB.logshow(function(response) {
+    $(fbLogin).on('click', function(){
+      FB.login(function(response) {
         if (response.authResponse) {
           FB.api('/me', function(response) {
             J.userId = response.id;
